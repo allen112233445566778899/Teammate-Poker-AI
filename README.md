@@ -115,8 +115,8 @@ diff = 两人组总分 − 4人组总分，两人组每人 +diff×2，4人组每
 
 ```bash
 # 克隆项目
-git clone https://github.com/你的用户名/guangdong-poker.git
-cd guangdong-poker
+git clone https://github.com/allen112233445566778899/Teammate-Poker-AI.git
+cd Teammate-Poker-AI
 
 # 安装依赖
 npm install
