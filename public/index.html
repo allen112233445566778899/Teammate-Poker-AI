@@ -1,0 +1,336 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+  <title>找朋友扑克</title>
+  <link rel="stylesheet" href="style.css">
+</head>
+<body>
+
+  <!-- 登录/房间界面 -->
+  <section id="lobby-view" class="view active">
+    <div class="view-header">
+      <h1>找朋友（找伙计）扑克</h1>
+      <p class="subtitle">6人玩法</p>
+    </div>
+    <div class="view-body">
+      <div class="lobby-form">
+        <div class="player-input-row">
+          <label>你的名字</label>
+          <input type="text" id="lobby-name" maxlength="10" placeholder="输入名称">
+        </div>
+        <div id="lobby-error" class="error-msg hidden"></div>
+        <button class="btn btn-primary btn-large" id="btn-create-room">创建房间</button>
+        <div class="lobby-divider">或</div>
+        <div class="player-input-row">
+          <label>房间码</label>
+          <input type="text" id="lobby-code" maxlength="6" placeholder="输入6位房间码" style="text-transform:uppercase">
+        </div>
+        <button class="btn btn-secondary btn-large" id="btn-join-room">加入房间</button>
+      </div>
+
+      <!-- 游戏规则说明书 -->
+      <div class="rules-section">
+        <div class="rules-toggle" id="rules-toggle">
+          <span>📖 游戏规则说明</span>
+          <span class="rules-arrow" id="rules-arrow">▼</span>
+        </div>
+        <div class="rules-body" id="rules-body">
+
+          <div class="rules-block">
+            <div class="rules-title">基本信息</div>
+            <p>6人游戏，54张牌（含大王/小王），每人发9张。</p>
+          </div>
+
+          <div class="rules-block">
+            <div class="rules-title">牌的大小</div>
+            <p class="rules-row"><span class="rules-label">点数</span>3 &lt; 4 &lt; 5 &lt; 6 &lt; 7 &lt; 8 &lt; 9 &lt; 10 &lt; J &lt; Q &lt; K &lt; A &lt; 2 &lt; 小王 &lt; 大王</p>
+            <p class="rules-row"><span class="rules-label">花色</span>♦方块 &lt; ♣梅花 &lt; ♥红心 &lt; ♠黑桃（同点数比花色）</p>
+          </div>
+
+          <div class="rules-block">
+            <div class="rules-title">牌型大小</div>
+            <p>同花顺 &gt; 四打一 &gt; 三带二 &gt; 同花 &gt; 顺子 &gt; 三张 / 对子 / 单张</p>
+            <table class="rules-table">
+              <tr><th>牌型</th><th>张数</th><th>说明</th></tr>
+              <tr><td>单张</td><td>1</td><td>任意1张</td></tr>
+              <tr><td>对子</td><td>2</td><td>2张同点数，或大王+小王</td></tr>
+              <tr><td>三张</td><td>3</td><td>3张同点数</td></tr>
+              <tr><td>顺子</td><td>5</td><td>5张连续，A可两端（A-2-3-4-5最小，10-J-Q-K-A最大）</td></tr>
+              <tr><td>同花</td><td>5</td><td>5张同花色（非顺子）</td></tr>
+              <tr><td>三带二</td><td>5</td><td>3张同点数 + 2张同点数</td></tr>
+              <tr><td>四打一</td><td>5</td><td>4张同点数 + 任意1张</td></tr>
+              <tr><td>同花顺</td><td>5</td><td>5张同花色且连续点数</td></tr>
+            </table>
+          </div>
+
+          <div class="rules-block">
+            <div class="rules-title">游戏流程</div>
+            <p>🔹 <b>第一局</b>：持有♦3的玩家为叫主者，第一手必须出含♦3的牌。</p>
+            <p>🔹 <b>后续局</b>：上一局头游（第一名）为叫主者，第一手无限制。</p>
+            <p>🔹 <b>清空积分后</b>：下一局重新按♦3确定叫主者，恢复♦3出牌限制。</p>
+          </div>
+
+          <div class="rules-block">
+            <div class="rules-title">叫主阶段</div>
+            <p>叫主者从3~10任意花色中选2张牌叫主，根据持牌情况决定队伍：</p>
+            <table class="rules-table">
+              <tr><th>情形</th><th>条件</th><th>模式</th></tr>
+              <tr><td>A</td><td>两张牌分别被两个不同玩家持有</td><td>3v3</td></tr>
+              <tr><td>B</td><td>两张牌被同一玩家持有（可提异议重叫）</td><td>2v4</td></tr>
+              <tr><td>C</td><td>一张叫主者持有，另一张被某玩家持有</td><td>2v4</td></tr>
+              <tr><td>D</td><td>两张牌都被叫主者持有</td><td>1v5</td></tr>
+            </table>
+            <p>情形D时叫主者选择：<b>2倍（不公示）</b>或 <b>3倍（公示1v5）</b></p>
+            <p>叫牌确认后，从叫主者下一位顺时针，每人可选择<b>抢1v5（4倍）</b>或跳过。</p>
+          </div>
+
+          <div class="rules-block">
+            <div class="rules-title">出牌规则</div>
+            <p>🔹 每轮第一个出牌可任意出合法牌型。</p>
+            <p>🔹 后续玩家必须出同牌型且更大的牌，或选择Pass。</p>
+            <p>🔹 所有人Pass后，领先者赢得本轮，重新自由出牌。</p>
+            <p>⚠️ 下家只剩1张牌时，自由出单牌必须出最大的；若有能打过领先单牌的牌，不能Pass。</p>
+          </div>
+
+          <div class="rules-block">
+            <div class="rules-title">积分计算</div>
+            <p class="rules-scores-base">名次基础分：第1名=6，第2名=5，第3名=4，第4名=3，第5名=2，第6名=1</p>
+
+            <div class="rules-mode-title">🟢 3v3 模式</div>
+            <p>两队各3人，各自累加名次基础分，差值即为每人得失。</p>
+            <p>A队总分 − B队总分 = diff，A队每人 <b>+diff</b>，B队每人 <b>−diff</b></p>
+            <p>示例：A队（第1、3、5名）= 12分，B队（第2、4、6名）= 9分，diff=3，A队每人 <b>+3</b>，B队每人 <b>−3</b></p>
+
+            <div class="rules-mode-title">🟡 2v4 模式</div>
+            <p>两人组最高者吃掉连续两个名次积分（占2个位置），另一人占1个位置，共3个位置；4人组取前3名，共3个位置。</p>
+            <p>diff = 两人组总分 − 4人组总分，两人组每人 <b>+diff×2</b>，4人组每人 <b>−diff</b></p>
+            <p><b>提前结算</b>：两人组2人全部出完，或4人组3人出完，立即结算。</p>
+            <table class="rules-table rules-table-sm">
+              <tr><th>甲名次</th><th>乙名次</th><th>甲得分</th><th>乙顺移</th><th>两人组总</th><th>4人组总</th><th>两人组每人</th><th>4人组每人</th></tr>
+              <tr><td>1</td><td>2</td><td>6+5=11</td><td>4</td><td>15</td><td>6</td><td class="pos">+18</td><td class="neg">-9</td></tr>
+              <tr><td>1</td><td>3</td><td>6+5=11</td><td>3</td><td>14</td><td>7</td><td class="pos">+14</td><td class="neg">-7</td></tr>
+              <tr><td>1</td><td>4</td><td>6+5=11</td><td>2</td><td>13</td><td>8</td><td class="pos">+10</td><td class="neg">-5</td></tr>
+              <tr><td>1</td><td>5</td><td>6+5=11</td><td>1</td><td>12</td><td>9</td><td class="pos">+6</td><td class="neg">-3</td></tr>
+              <tr><td>1</td><td>6</td><td>6+5=11</td><td>0</td><td>11</td><td>9</td><td class="pos">+4</td><td class="neg">-2</td></tr>
+              <tr><td>2</td><td>3</td><td>5+4=9</td><td>3</td><td>12</td><td>9</td><td class="pos">+6</td><td class="neg">-3</td></tr>
+              <tr><td>2</td><td>4</td><td>5+4=9</td><td>2</td><td>11</td><td>10</td><td class="pos">+2</td><td class="neg">-1</td></tr>
+              <tr><td>2</td><td>5</td><td>5+4=9</td><td>1</td><td>10</td><td>11</td><td class="neg">-2</td><td class="pos">+1</td></tr>
+              <tr><td>2</td><td>6</td><td>5+4=9</td><td>0</td><td>9</td><td>11</td><td class="neg">-4</td><td class="pos">+2</td></tr>
+              <tr><td>3</td><td>4</td><td>4+3=7</td><td>2</td><td>9</td><td>12</td><td class="neg">-6</td><td class="pos">+3</td></tr>
+              <tr><td>3</td><td>5</td><td>4+3=7</td><td>1</td><td>8</td><td>13</td><td class="neg">-10</td><td class="pos">+5</td></tr>
+              <tr><td>3</td><td>6</td><td>4+3=7</td><td>0</td><td>7</td><td>13</td><td class="neg">-12</td><td class="pos">+6</td></tr>
+              <tr><td>4</td><td>5</td><td>3+2=5</td><td>1</td><td>6</td><td>15</td><td class="neg">-18</td><td class="pos">+9</td></tr>
+              <tr><td>4</td><td>6</td><td>3+2=5</td><td>0</td><td>5</td><td>15</td><td class="neg">-20</td><td class="pos">+10</td></tr>
+              <tr><td>5</td><td>6</td><td>2+1=3</td><td>0</td><td>3</td><td>15</td><td class="neg">-24</td><td class="pos">+12</td></tr>
+            </table>
+
+            <div class="rules-mode-title">🔴 1v5 模式</div>
+            <p>固定差值 = 15−6 = <b>9分</b>，倍数m由叫主阶段决定。</p>
+            <p>单人方赢：单人方 <b>+9×m×5</b>，五人组每人 <b>−9×m</b></p>
+            <p>五人组赢：单人方 <b>−9×m×5</b>，五人组每人 <b>+9×m</b></p>
+            <table class="rules-table">
+              <tr><th>来源</th><th>倍数</th><th>单人方赢</th><th>单人方负</th><th>五人组每人赢</th><th>五人组每人负</th></tr>
+              <tr><td>情形D选2倍（不公示）</td><td>2</td><td class="pos">+90</td><td class="neg">-90</td><td class="pos">+18</td><td class="neg">-18</td></tr>
+              <tr><td>情形D选3倍（公示）</td><td>3</td><td class="pos">+135</td><td class="neg">-135</td><td class="pos">+27</td><td class="neg">-27</td></tr>
+              <tr><td>抢1v5</td><td>4</td><td class="pos">+180</td><td class="neg">-180</td><td class="pos">+36</td><td class="neg">-36</td></tr>
+            </table>
+            <p>提前结算：单人方出完牌，或五人组任意一人出完牌，立即结算。</p>
+          </div>
+
+          <p class="rules-footer">每局所有玩家积分之和为零（零和博弈）</p>
+        </div>
+      </div>
+
+    </div>
+  </section>
+
+  <!-- 等待室 -->
+  <section id="waiting-view" class="view hidden">
+    <div class="view-header">
+      <h2>等待玩家加入</h2>
+      <div class="room-code-display">
+        <span class="room-code-label">房间码</span>
+        <span class="room-code" id="room-code-display">------</span>
+        <button class="btn btn-ghost btn-sm" id="btn-copy-link">复制链接</button>
+      </div>
+    </div>
+    <div class="view-body">
+      <div class="waiting-players" id="waiting-players"></div>
+      <p class="waiting-hint" id="waiting-hint">等待其他玩家加入... (0/6)</p>
+      <!-- AI配置面板（仅房主可见） -->
+      <div id="ai-config-section" class="hidden">
+        <button class="btn btn-ghost btn-sm" id="btn-toggle-ai-config" style="width:100%;margin-bottom:8px;">🤖 AI玩家设置</button>
+        <div id="ai-config-panel" class="ai-config-panel hidden">
+          <div class="ai-config-title">配置AI玩家（API Key仅存本地，不上传服务器）</div>
+          <div id="ai-seat-list"></div>
+        </div>
+      </div>
+      <button class="btn btn-primary btn-large hidden" id="btn-start-game">开始游戏</button>
+    </div>
+  </section>
+
+  <!-- 叫主界面 -->
+  <section id="bid-view" class="view hidden">
+    <!-- 顶部：叫主者信息 -->
+    <div class="bid-top-bar">
+      <span class="bid-phase-label">叫主阶段</span>
+      <span class="bid-caller-label" id="bid-caller-name">叫主者：-</span>
+    </div>
+
+    <!-- 积分栏 -->
+    <div class="bid-scores-bar" id="bid-scores-bar"></div>
+
+    <!-- 所有人的手牌（始终显示） -->
+    <div class="bid-hand-section">
+      <div class="bid-hand-label">我的手牌</div>
+      <div class="bid-hand-cards" id="bid-my-hand"></div>
+    </div>
+
+    <!-- 叫主者选牌区（仅叫主者可见） -->
+    <div id="bid-step-select" class="bid-panel hidden">
+      <div class="bid-panel-title">选择2张叫牌（3-10，任意花色）</div>
+      <p class="bid-selected-info" id="bid-selected-info">请选择2张叫牌</p>
+      <div class="bid-picker" id="bid-picker"></div>
+      <div id="bid-error" class="error-msg hidden"></div>
+      <button class="btn btn-primary btn-large" id="btn-bid-confirm">确认叫牌</button>
+    </div>
+
+    <!-- 等待叫主者选牌（非叫主者可见） -->
+    <div id="bid-waiting-select" class="bid-panel hidden">
+      <div class="bid-waiting-icon">⏳</div>
+      <p class="bid-waiting-text" id="bid-waiting-select-msg">等待叫主者选牌...</p>
+    </div>
+
+    <!-- 叫牌展示区（选好后所有人可见） -->
+    <div id="bid-reveal-section" class="bid-panel hidden">
+      <div class="bid-panel-title">叫主者选择的牌</div>
+      <div class="bid-reveal-cards" id="bid-reveal-cards"></div>
+      <div class="bid-situation-label" id="bid-situation-label"></div>
+    </div>
+
+    <!-- 异议确认（情形B，持牌者可见） -->
+    <div id="bid-step-objection" class="bid-panel hidden">
+      <div class="bid-panel-title">⚠️ 异议确认</div>
+      <p class="bid-objection-msg">
+        你同时持有叫牌 <strong id="bid-objection-cards"></strong>，是否提出异议？
+      </p>
+      <div class="objection-buttons">
+        <button class="btn btn-secondary" id="btn-bid-objection-yes">提出异议（重新叫牌）</button>
+        <button class="btn btn-primary" id="btn-bid-objection-no">不提异议（继续）</button>
+      </div>
+    </div>
+
+    <!-- 等待异议确认（其他人） -->
+    <div id="bid-waiting-objection" class="bid-panel hidden">
+      <div class="bid-waiting-icon">⏳</div>
+      <p class="bid-waiting-text" id="bid-waiting-objection-msg">等待玩家确认异议...</p>
+    </div>
+
+    <!-- 抢1v5（非叫主者依次可见） -->
+    <div id="bid-step-grab" class="bid-panel hidden">
+      <div class="bid-panel-title">🎯 抢1v5</div>
+      <p class="bid-objection-msg">是否要抢1v5？（固定4倍积分）</p>
+      <div class="objection-buttons">
+        <button class="btn btn-primary" id="btn-bid-grab-confirm">抢1v5（4倍）</button>
+        <button class="btn btn-ghost" id="btn-bid-grab-skip">不抢，跳过</button>
+      </div>
+    </div>
+
+    <!-- 等待抢主（其他人） -->
+    <div id="bid-waiting-grab" class="bid-panel hidden">
+      <div class="bid-waiting-icon">⏳</div>
+      <p class="bid-waiting-text" id="bid-waiting-grab-msg">等待其他玩家决定是否抢1v5...</p>
+    </div>
+
+    <!-- 确认完毕，叫主者开始游戏 -->
+    <div id="bid-step-start" class="bid-panel hidden">
+      <div class="bid-confirmed-info" id="bid-confirmed-info"></div>
+      <button class="btn btn-primary btn-large" id="btn-start-playing">开始游戏</button>
+    </div>
+
+    <!-- 等待叫主者开始（其他人） -->
+    <div id="bid-waiting-start" class="bid-panel hidden">
+      <div class="bid-waiting-icon">✅</div>
+      <p class="bid-waiting-text">确认完毕，等待叫主者开始游戏...</p>
+    </div>
+
+    <!-- 情形D：叫主者选择倍数（2倍不公示 / 3倍公示） -->
+    <div id="bid-step-d-multiplier" class="bid-panel hidden">
+      <div class="bid-panel-title">🎯 你持有两张叫牌，选择倍数</div>
+      <div class="objection-buttons">
+        <button class="btn btn-secondary" id="btn-bid-d-2x">2倍（不公示）</button>
+        <button class="btn btn-primary" id="btn-bid-d-3x">3倍（公示1v5）</button>
+      </div>
+    </div>
+
+    <!-- 等待叫主者选倍数（其他人） -->
+    <div id="bid-waiting-d-multiplier" class="bid-panel hidden">
+      <div class="bid-waiting-icon">⏳</div>
+      <p class="bid-waiting-text" id="bid-waiting-d-msg">等待叫主者决定...</p>
+    </div>
+  </section>
+
+  <!-- 出牌界面 -->
+  <section id="play-view" class="view hidden">
+    <div class="play-header">
+      <div class="play-info">
+        <span id="play-current-player">当前玩家：-</span>
+        <span id="play-trick-info"></span>
+      </div>
+      <div class="play-bid-info" id="play-bid-info"></div>
+      <div class="rankings-bar" id="rankings-bar"></div>
+    </div>
+    <div class="play-area">
+      <!-- 其他玩家状态 -->
+      <div class="other-players" id="other-players"></div>
+      <!-- 下家剩1张提示 -->
+      <div id="single-card-warn" class="single-card-warn hidden"></div>
+      <!-- 第一局第一手提示 -->
+      <div id="first-trick-hint" class="single-card-warn hidden"></div>
+      <!-- 本轮出牌：横向，每人一格 -->
+      <div class="trick-area">
+        <div class="trick-label">本轮出牌</div>
+        <div class="trick-table" id="trick-table"></div>
+      </div>
+    </div>
+    <div class="hand-area">
+      <div class="hand-label">我的手牌 <span id="hand-count"></span></div>
+      <div class="hand-cards" id="hand-cards"></div>
+    </div>
+    <div class="play-actions">
+      <div id="play-error" class="error-msg hidden"></div>
+      <div class="action-buttons">
+        <button class="btn btn-secondary" id="btn-pass">Pass</button>
+        <button class="btn btn-primary" id="btn-play">出牌</button>
+      </div>
+    </div>
+  </section>
+
+  <!-- 结算界面 -->
+  <section id="result-view" class="view hidden">
+    <div class="view-header">
+      <h2>本局结算</h2>
+    </div>
+    <div class="view-body">
+      <div class="result-mode" id="result-mode"></div>
+      <div class="result-rankings" id="result-rankings"></div>
+      <div class="result-scores" id="result-scores"></div>
+      <div class="result-scores" id="result-totals"></div>
+      <button class="btn btn-primary btn-large" id="btn-play-again">再来一局</button>
+      <button class="btn btn-danger btn-large hidden" id="btn-reset-scores">清空所有积分</button>
+    </div>
+  </section>
+
+  <script>
+    window.onerror = function(msg, src, line, col, err) {
+      document.body.insertAdjacentHTML('afterbegin',
+        '<div style="position:fixed;top:0;left:0;right:0;background:#c0392b;color:#fff;padding:8px;font-size:12px;z-index:9999;word-break:break-all">'
+        + 'JS错误: ' + msg + ' (' + src + ':' + line + ')</div>');
+    };
+  </script>
+  <script src="ai-worker.js"></script>
+  <script src="client.js"></script>
+</body>
+</html>
