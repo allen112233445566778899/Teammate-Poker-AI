@@ -98,5 +98,126 @@ node server.js
 ```
 
 ## License
-
 MIT
+
+Guangdong Poker: Finding Friends 🃏
+
+A multiplayer online version of the classic Guangdong folk card game "Finding Friends". Supports 6-player real-time battles with built-in AI players.
+
+✨ Features
+
+•   6-Player Real-Time Battle: WebSocket-based real-time communication with room code mechanism.
+
+•   Complete Rule Implementation: Supports 3v3, 2v4, and 1v5 modes, including full workflows for declaring trump, contesting trump, and disputes.
+
+•   AI Players: Compatible with major AI APIs including OpenAI, Claude, Gemini, Kimi, Qwen, and DeepSeek.
+
+•   Play History: Enable the history feature to view detailed play records for each round during the game.
+
+•   Ranking System: Complete score calculation and cumulative leaderboards.
+
+•   Mobile First: Responsive design optimized for mobile devices.
+
+🚀 Quick Start
+
+Prerequisites
+
+•   Node.js 16+
+
+Installation & Run
+
+# Clone the repository
+git clone https://github.com/your-username/guangdong-poker.git
+cd guangdong-poker
+
+# Install dependencies
+npm install
+
+# Start the server
+node server.js
+
+Open your browser and navigate to http://localhost:3000.
+
+🎮 Multiplayer Guide
+
+1.  One player creates a room and receives a 6-digit room code.
+2.  Other players join by entering the room code or using the shared link.
+3.  (Optional) The host can toggle "📝 Enable Play History" to view details of each round during the game.
+4.  Once 6 players are present, the host clicks "Start Game".
+
+📜 Play History Feature
+
+•   After creating a room, the host can check "📝 Enable Play History".
+
+•   During the game, click the "📝 View History" button in the top-right corner.
+
+•   A modal will display all play records, including:
+
+    ◦   Play order for each round
+
+    ◦   Cards played by each player (card type + specific cards)
+
+    ◦   Pass records
+
+    ◦   Timestamps
+
+•   History is displayed in reverse chronological order (newest first).
+
+🤖 AI Player Configuration
+
+1.  After creating a room, click "🤖 AI Settings".
+2.  Check the seats you want to assign to AI.
+3.  Select an AI provider and enter the API Key (stored locally in your browser only; not uploaded to the server).
+4.  Click "Save Config".
+5.  You can configure all 6 seats as AIs to watch a pure AI battle.
+
+Supported AI Providers
+
+Provider Recommended Model
+
+OpenAI gpt-4o
+
+Claude (Anthropic) claude-sonnet-4-5
+
+Gemini (Google) gemini-2.0-flash
+
+Kimi (Moonshot) moonshot-v1-8k
+
+Qwen (Alibaba) qwen-plus
+
+DeepSeek deepseek-chat
+
+📖 Game Rules Overview
+
+•   Players: 6 players, 54 cards (including Jokers), 9 cards dealt per player.
+
+•   Card Ranking: 3 < 4 < ... < A < 2 < Little Joker < Big Joker.
+
+•   Trump Declaration: The declarer selects 2 cards to call trump, determining the team mode based on their hand.
+
+•   Scoring: Rank-based scoring system; a zero-sum game.
+
+•   For detailed rules, see "📖 Game Rules" within the app.
+
+🛠 Tech Stack
+
+•   Backend: Node.js + Express + WebSocket (ws)
+
+•   Frontend: Vanilla HTML / CSS / JavaScript (No framework)
+
+•   AI: OpenAI-compatible interfaces from various vendors (pure frontend calls)
+
+📁 Project Structure
+
+
+├── server.js          # Main server file (Game logic + WebSocket)
+├── public/
+│   ├── index.html    # Page structure
+│   ├── client.js     # Client-side logic
+│   ├── style.css     # Styling
+│   └── ai-worker.js  # AI player adapter
+├── package.json
+└── README.md
+
+
+
