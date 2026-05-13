@@ -211,12 +211,19 @@ DeepSeek deepseek-chat
 
 
 ├── server.js          # Main server file (Game logic + WebSocket)
+
 ├── public/
+
 │   ├── index.html    # Page structure
+
 │   ├── client.js     # Client-side logic
+
 │   ├── style.css     # Styling
+
 │   └── ai-worker.js  # AI player adapter
+
 ├── package.json
+
 └── README.md
 
 
