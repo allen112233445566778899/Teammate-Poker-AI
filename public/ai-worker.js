@@ -63,8 +63,8 @@ function playTypeToStr(type) {
 }
 
 // 构建给 AI 的系统提示词（完整规则 + 策略指导）
-function buildSystemPrompt() {
-  return `你是一个顶级广东找朋友（找伙计）扑克牌游戏AI，具备深度策略推理能力。
+function buildSystemPrompt(customPrompt = '') {
+  let basePrompt = `你是一个顶级广东找朋友（找伙计）扑克牌游戏AI，具备深度策略推理能力。
 
 ═══ 【基本规则】 ═══
 - 6人游戏，54张牌（含大小王），每人发9张
@@ -129,6 +129,13 @@ function buildSystemPrompt() {
 - 已出过的牌型可以推断其他玩家的手牌构成
 
 你的任务：综合以上策略，做出最优决策。只返回JSON，不要任何其他文字。`;
+
+  // 如果有自定义提示词，追加到系统提示词末尾
+  if (customPrompt && customPrompt.trim()) {
+    basePrompt += `\n\n═══ 【个性化设定】 ═══\n${customPrompt.trim()}`;
+  }
+
+  return basePrompt;
 }
 
 // 构建用户提示词（游戏状态 + 策略分析框架）
@@ -242,6 +249,70 @@ function buildUserPrompt(state, myHand, legalPlays) {
     }
   } else {
     prompt += `新一轮，自由出牌\n`;
+  }
+
+  // ── 历史出牌分析 ──
+  if (trickState && trickState.plays && trickState.plays.length > 0) {
+    prompt += `\n【出牌历史分析】\n`;
+    prompt += `根据本轮已出的牌，可以推断：\n`;
+    
+    // 分析每个玩家的出牌意图
+    const playersPlayed = new Map();
+    trickState.plays.forEach(p => {
+      if (p.play !== null) {
+        if (!playersPlayed.has(p.playerIndex)) playersPlayed.set(p.playerIndex, []);
+        playersPlayed.get(p.playerIndex).push(p.play);
+      }
+    });
+
+    playersPlayed.forEach((playsArr, playerIdx) => {
+      if (playerIdx === mySeat) return; // 跳过自己
+      const lastPlay = playsArr[playsArr.length - 1];
+      
+      // 判断是否是队友
+      let isTeammate = false;
+      if (teamConfig) {
+        if (teamConfig.mode === '3v3' || teamConfig.mode === '2v4') {
+          const myTeam = [teamConfig.caller, ...(teamConfig.partners || [])];
+          isTeammate = myTeam.includes(playerIdx) && myTeam.includes(mySeat);
+        } else if (teamConfig.mode === '1v5') {
+          const soloPlayer = teamConfig.grabber !== undefined ? teamConfig.grabber : teamConfig.caller;
+          isTeammate = (playerIdx === soloPlayer) === (mySeat === soloPlayer);
+        }
+      }
+      
+      const relation = isTeammate ? '（队友）' : '（对手）';
+      
+      // 分析出牌强度
+      let analysis = '';
+      if (lastPlay.type === 'flush_straight' || lastPlay.type === 'four_of_a_kind') {
+        analysis = '出了极强牌型，可能手牌很强或想快速结束';
+      } else if (lastPlay.type === 'full_house' || lastPlay.type === 'flush') {
+        analysis = '出了强牌型，手牌应该不弱';
+      } else if (lastPlay.type === 'straight') {
+        analysis = '出了顺子，可能在清理中等牌';
+      } else if (lastPlay.type === 'triple') {
+        analysis = '出了三张，可能有多组对子或三张';
+      } else if (lastPlay.type === 'pair') {
+        const maxRank = Math.max(...lastPlay.cards.map(c => c.rank));
+        if (maxRank >= 12) analysis = '出了大对子，手牌应该较强';
+        else if (maxRank <= 5) analysis = '出了小对子，可能在清理废牌';
+        else analysis = '出了中等对子';
+      } else if (lastPlay.type === 'single') {
+        const rank = lastPlay.cards[0].rank;
+        if (rank >= 13) analysis = '出了大单牌（2或王），可能想控制局面';
+        else if (rank <= 5) analysis = '出了小单牌，可能在清理废牌';
+        else analysis = '出了中等单牌';
+      }
+      
+      prompt += `  - 玩家${playerIdx+1}${relation}：${playTypeToStr(lastPlay.type)}（${cardsToStr(lastPlay.cards)}）→ ${analysis}\n`;
+    });
+
+    // 如果有人Pass，也分析
+    const passedPlayers = trickState.plays.filter(p => p.play === null).map(p => p.playerIndex);
+    if (passedPlayers.length > 0) {
+      prompt += `  - Pass的玩家：${passedPlayers.map(i => `玩家${i+1}`).join('、')} → 可能手牌较弱或在保留大牌\n`;
+    }
   }
 
   // ── 我的手牌 ──
@@ -430,15 +501,15 @@ function getCardType(cards) {
 }
 
 // ===== 主入口：AI 决策 =====
-// config: { provider, model, apiKey, endpoint(custom only) }
+// config: { provider, model, apiKey, endpoint, customPrompt }
 // state: 服务器发来的游戏状态
 // legalPlays: 合法出牌列表（数组的数组）
 // 返回: 选中的牌数组，或 null（Pass）
 async function aiDecide(config, state, legalPlays) {
-  const { provider, model, apiKey, endpoint } = config;
+  const { provider, model, apiKey, endpoint, customPrompt } = config;
   const myHand = state.myHand;
 
-  const systemPrompt = buildSystemPrompt();
+  const systemPrompt = buildSystemPrompt(customPrompt);
   const userPrompt = buildUserPrompt(state, myHand, legalPlays);
   const messages = [
     { role: 'system', content: systemPrompt },
@@ -493,7 +564,7 @@ async function aiDecideBid(config, state) {
 
   // 有API Key：让AI推理叫牌策略
   const handStr = cardsToStr(myHand);
-  const systemPrompt = buildSystemPrompt();
+  const systemPrompt = buildSystemPrompt(config.customPrompt);
   const userPrompt = `【叫主决策】我是叫主者，需要选2张叫牌（只能从3-10的任意花色中选）。
 
 我的手牌（${myHand.length}张）：${handStr}
@@ -587,7 +658,7 @@ async function aiDecideGrab(config, state) {
   }
 
   // AI推理
-  const systemPrompt = buildSystemPrompt();
+  const systemPrompt = buildSystemPrompt(config.customPrompt);
   const userPrompt = `【抢1v5决策】是否要抢1v5单挑？（固定4倍积分）
 
 我的手牌（${myHand.length}张）：${cardsToStr(myHand)}
@@ -662,7 +733,7 @@ async function aiDecideDMultiplier(config, state) {
     return (strength >= 28 || needsCatchup) ? 3 : 2;
   }
 
-  const systemPrompt = buildSystemPrompt();
+  const systemPrompt = buildSystemPrompt(config.customPrompt);
   const userPrompt = `【情形D倍数选择】我持有两张叫牌，需选择1v5的倍数。
 
 我的手牌（${myHand.length}张）：${cardsToStr(myHand)}
@@ -757,7 +828,7 @@ async function aiDecideObjection(config, state) {
   }
 
   // AI推理
-  const systemPrompt = buildSystemPrompt();
+  const systemPrompt = buildSystemPrompt(config.customPrompt);
   const userPrompt = `【异议决策】情形B：我持有叫主者叫出的两张牌，叫主者想和我组成2v4（我们两人 vs 其余四人）。
 我可以选择：
 - 不提异议（接受2v4）：我和叫主者组队，两人组 vs 四人组，两人组赢可得高分

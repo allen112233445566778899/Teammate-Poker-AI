@@ -10,7 +10,7 @@ let gameState = null;
 let selectedCards = [];
 
 // ===== AI 配置 =====
-// aiConfigs: seat -> { provider, model, apiKey, endpoint }
+// aiConfigs: seat -> { provider, model, apiKey, endpoint, customPrompt }
 const aiConfigs = new Map();
 // 服务器广播的AI座位集合（仅标记，Key不存服务器）
 let serverAiSeats = new Set();
@@ -170,6 +170,7 @@ function handleMessage(msg) {
   switch (msg.type) {
     case 'room_created':
       mySeat = msg.seat; roomCode = msg.code;
+      console.log('房间已创建 - 我的座位:', mySeat, '房间码:', roomCode);
       renderWaiting(msg.players);
       showView('waiting-view');
       document.getElementById('room-code-display').textContent = roomCode;
@@ -234,6 +235,21 @@ function renderWaiting(players) {
   const startBtn = document.getElementById('btn-start-game');
   if (mySeat === 0 && count === 6) startBtn.classList.remove('hidden');
   else startBtn.classList.add('hidden');
+
+  // 房主显示历史记录开关
+  const historyToggleSection = document.getElementById('play-history-toggle-section');
+  console.log('等待室渲染 - mySeat:', mySeat, '历史记录开关元素:', historyToggleSection);
+  if (historyToggleSection) {
+    if (mySeat === 0) {
+      historyToggleSection.classList.remove('hidden');
+      console.log('显示历史记录开关（房主）');
+    } else {
+      historyToggleSection.classList.add('hidden');
+      console.log('隐藏历史记录开关（非房主）');
+    }
+  } else {
+    console.warn('未找到历史记录开关元素');
+  }
 
   // 房主显示AI配置区
   const aiSection = document.getElementById('ai-config-section');
@@ -320,6 +336,7 @@ function renderAISeatList() {
         <input class="ai-input" type="text" placeholder="模型名称" data-seat="${i}" data-field="model" value="${escapeHtml(cfg.model||'')}">
         <input class="ai-input" type="password" placeholder="API Key（仅存本地）" data-seat="${i}" data-field="apiKey" value="${escapeHtml(cfg.apiKey||'')}">
         <input class="ai-input ai-endpoint ${cfg.provider==='custom'?'':'hidden'}" type="text" placeholder="自定义API端点 URL" data-seat="${i}" data-field="endpoint" value="${escapeHtml(cfg.endpoint||'')}">
+        <textarea class="ai-textarea" placeholder="自定义AI提示词（可选）&#10;例如：你是一个激进的玩家，喜欢冒险抢主" data-seat="${i}" data-field="customPrompt" rows="2">${escapeHtml(cfg.customPrompt||'')}</textarea>
         <div class="ai-save-row">
           <button class="btn btn-primary btn-sm ai-save-btn" data-seat="${i}">保存配置</button>
           <button class="btn btn-ghost btn-sm ai-test-btn" data-seat="${i}">测试连接</button>
@@ -339,7 +356,7 @@ function renderAISeatList() {
       const statusEl = document.getElementById(`ai-status-${seat}`);
       if (e.target.checked) {
         const provider = 'openai';
-        if (!aiConfigs.has(seat)) aiConfigs.set(seat, { provider, model: AI_DEFAULT_MODELS[provider], apiKey: '', endpoint: '' });
+        if (!aiConfigs.has(seat)) aiConfigs.set(seat, { provider, model: AI_DEFAULT_MODELS[provider], apiKey: '', endpoint: '', customPrompt: '' });
         cfgDiv.classList.remove('hidden');
         if (statusEl) { statusEl.textContent = '🤖 AI已加入'; statusEl.className = 'ai-seat-status ai-active'; }
         send({ type: 'ai_seat_config', seat, isAI: true });
@@ -372,8 +389,8 @@ function renderAISeatList() {
     });
   });
 
-  // 其他输入框实时同步到内存
-  container.querySelectorAll('.ai-input').forEach(el => {
+  // 其他输入框和文本域实时同步到内存
+  container.querySelectorAll('.ai-input, .ai-textarea').forEach(el => {
     el.addEventListener('input', (e) => {
       const seat = parseInt(e.target.dataset.seat);
       const field = e.target.dataset.field;
@@ -424,6 +441,7 @@ function renderAISeatList() {
 // ===== 游戏状态路由 =====
 function renderState(state) {
   const { phase } = state;
+  console.log('收到游戏状态:', phase, 'enablePlayHistory:', state.enablePlayHistory);
   // 始终同步服务器AI座位集合
   if (state.aiSeats) serverAiSeats = new Set(state.aiSeats);
   if (phase === 'waiting') {
@@ -591,7 +609,7 @@ function getSituationLabel(situation, config, players) {
 
 // ===== 出牌阶段渲染 =====
 function renderPlayPhase(state) {
-  const { players, mySeat: seat, myHand, handCounts, trickState, rankings, bidCards, teamConfig, attackerIndex, isFirstGame } = state;
+  const { players, mySeat: seat, myHand, handCounts, trickState, rankings, bidCards, teamConfig, attackerIndex, isFirstGame, enablePlayHistory } = state;
   selectedCards = selectedCards.filter(sc => myHand.some(c=>c.suit===sc.suit&&c.rank===sc.rank));
 
   const currentPlayer = trickState ? trickState.currentPlayer : -1;
@@ -602,6 +620,21 @@ function renderPlayPhase(state) {
   const leadPlay = trickState ? trickState.leadPlay : null;
   document.getElementById('play-trick-info').textContent = leadPlay
     ? `领先：${playTypeLabel(leadPlay.type)}` : '新一轮（自由出牌）';
+
+  // 显示/隐藏查看历史按钮
+  const historyBtn = document.getElementById('btn-view-history');
+  if (historyBtn) {
+    console.log('历史记录功能状态:', enablePlayHistory, '按钮元素:', historyBtn);
+    if (enablePlayHistory) {
+      historyBtn.classList.remove('hidden');
+      console.log('显示查看历史按钮');
+    } else {
+      historyBtn.classList.add('hidden');
+      console.log('隐藏查看历史按钮');
+    }
+  } else {
+    console.warn('未找到查看历史按钮元素');
+  }
 
   // 第一局第一手提示
   const firstHintEl = document.getElementById('first-trick-hint');
@@ -831,6 +864,11 @@ function renderResult(msg) {
 // ===== 事件绑定 =====
 document.addEventListener('DOMContentLoaded', () => {
   try {
+  console.log('页面加载完成，检查关键元素...');
+  console.log('历史记录开关元素:', document.getElementById('play-history-toggle-section'));
+  console.log('历史记录checkbox:', document.getElementById('play-history-checkbox'));
+  console.log('查看历史按钮:', document.getElementById('btn-view-history'));
+  
   const urlParams = new URLSearchParams(location.search);
   const codeFromUrl = urlParams.get('room');
   if (codeFromUrl) document.getElementById('lobby-code').value = codeFromUrl.toUpperCase();
@@ -906,6 +944,36 @@ document.addEventListener('DOMContentLoaded', () => {
       send({ type: 'reset_scores' });
     }
   });
+
+  // 历史出牌记录开关
+  const playHistoryCheckbox = document.getElementById('play-history-checkbox');
+  if (playHistoryCheckbox) {
+    playHistoryCheckbox.addEventListener('change', (e) => {
+      send({ type: 'toggle_play_history', enabled: e.target.checked });
+    });
+  }
+
+  // 查看历史按钮
+  const btnViewHistory = document.getElementById('btn-view-history');
+  if (btnViewHistory) {
+    btnViewHistory.addEventListener('click', () => {
+      showPlayHistoryModal();
+    });
+  }
+
+  // 关闭历史弹窗
+  const btnCloseHistory = document.getElementById('btn-close-history');
+  const historyOverlay = document.getElementById('history-modal-overlay');
+  if (btnCloseHistory) {
+    btnCloseHistory.addEventListener('click', () => {
+      hidePlayHistoryModal();
+    });
+  }
+  if (historyOverlay) {
+    historyOverlay.addEventListener('click', () => {
+      hidePlayHistoryModal();
+    });
+  }
 
   // 规则说明书折叠
   const rulesToggle = document.getElementById('rules-toggle');
@@ -1232,4 +1300,101 @@ function canBeat(play, leadPlay) {
 
 function delay(ms) {
   return new Promise(resolve => setTimeout(resolve, ms));
+}
+
+// ===== 历史出牌记录弹窗 =====
+function showPlayHistoryModal() {
+  if (!gameState || !gameState.playHistory) return;
+  
+  const modal = document.getElementById('play-history-modal');
+  const body = document.getElementById('history-modal-body');
+  if (!modal || !body) return;
+
+  body.innerHTML = '';
+
+  const playHistory = gameState.playHistory;
+  const players = gameState.players;
+
+  if (!playHistory || playHistory.length === 0) {
+    body.innerHTML = '<p class="empty-history">暂无出牌记录</p>';
+  } else {
+    // 按轮次倒序显示（最新的在上面）
+    const sortedHistory = playHistory.slice().reverse();
+    
+    sortedHistory.forEach(trick => {
+      const trickDiv = document.createElement('div');
+      trickDiv.className = 'history-trick';
+      
+      const trickHeader = document.createElement('div');
+      trickHeader.className = 'history-trick-header';
+      trickHeader.textContent = `第 ${trick.trickIndex + 1} 轮`;
+      trickDiv.appendChild(trickHeader);
+
+      const playsDiv = document.createElement('div');
+      playsDiv.className = 'history-plays';
+
+      trick.plays.forEach(playRecord => {
+        const playDiv = document.createElement('div');
+        playDiv.className = 'history-play-item';
+
+        const playerName = players[playRecord.playerIndex]?.name || `玩家${playRecord.playerIndex + 1}`;
+        const time = new Date(playRecord.timestamp).toLocaleTimeString('zh-CN', { 
+          hour: '2-digit', 
+          minute: '2-digit', 
+          second: '2-digit' 
+        });
+
+        const nameSpan = document.createElement('span');
+        nameSpan.className = 'history-player-name';
+        nameSpan.textContent = playerName;
+        playDiv.appendChild(nameSpan);
+
+        const timeSpan = document.createElement('span');
+        timeSpan.className = 'history-time';
+        timeSpan.textContent = time;
+        playDiv.appendChild(timeSpan);
+
+        if (playRecord.play === null) {
+          // Pass
+          const passSpan = document.createElement('span');
+          passSpan.className = 'history-pass';
+          passSpan.textContent = 'Pass';
+          playDiv.appendChild(passSpan);
+        } else {
+          // 出牌
+          const cardsDiv = document.createElement('div');
+          cardsDiv.className = 'history-cards';
+          
+          const typeSpan = document.createElement('span');
+          typeSpan.className = 'history-card-type';
+          typeSpan.textContent = playTypeLabel(playRecord.play.type);
+          cardsDiv.appendChild(typeSpan);
+
+          const cardsList = document.createElement('span');
+          cardsList.className = 'history-cards-list';
+          cardsList.textContent = playRecord.play.cards.map(c => c.display).join(' ');
+          cardsDiv.appendChild(cardsList);
+
+          playDiv.appendChild(cardsDiv);
+        }
+
+        playsDiv.appendChild(playDiv);
+      });
+
+      trickDiv.appendChild(playsDiv);
+      body.appendChild(trickDiv);
+    });
+  }
+
+  modal.classList.remove('hidden');
+  // 防止背景滚动
+  document.body.style.overflow = 'hidden';
+}
+
+function hidePlayHistoryModal() {
+  const modal = document.getElementById('play-history-modal');
+  if (modal) {
+    modal.classList.add('hidden');
+    document.body.style.overflow = '';
+  }
 }

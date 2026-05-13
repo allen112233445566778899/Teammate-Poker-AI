@@ -267,6 +267,10 @@ class Room {
     this.pendingConfig = null;
     // AI座位标记：seat -> true（只标记是否AI，不存Key）
     this.aiSeats = new Set();
+    // 历史出牌记录功能
+    this.enablePlayHistory = false; // 是否开启历史记录
+    this.playHistory = []; // 所有轮次的出牌记录：[{ trickIndex, plays: [{playerIndex, play, timestamp}] }]
+    this.currentTrickIndex = 0; // 当前轮次编号
   }
 
   getPlayerCount() {
@@ -348,6 +352,8 @@ class Room {
       totalScores: this.totalScores,
       aiSeats: [...this.aiSeats],
       aiHands: Object.keys(aiHands).length > 0 ? aiHands : undefined,
+      enablePlayHistory: this.enablePlayHistory,
+      playHistory: this.enablePlayHistory ? this.playHistory : undefined,
       grabPhase: this.phase === 'grab' ? {
         currentCandidate: this.grabCandidates[this.grabCandidateIdx],
         pendingConfig: this.pendingConfig
@@ -362,6 +368,9 @@ class Room {
     this.gameOver = false;
     this.teamConfig = null;
     this.bidCards = [];
+    // 重置历史记录
+    this.playHistory = [];
+    this.currentTrickIndex = 0;
     // 第一局标记：只有从未开始过（lastWinner===null 且 isEverFirstGame）才限制♦3
     this.isFirstGame = (this.lastWinner === null && this.isEverFirstGame);
     if (this.isFirstGame) this.isEverFirstGame = false; // 第一局开始后清除标记
@@ -490,6 +499,7 @@ class Room {
   _startPlaying() {
     this.phase = 'playing';
     this.firstTrickDone = false; // 第一手牌是否已出完
+    this.currentTrickIndex = 0; // 重置轮次编号
     this.trickState = {
       leadPlay: null, plays: [], currentPlayer: this.callerIndex, passCount: 0
     };
@@ -536,6 +546,17 @@ class Room {
     this.trickState.plays.push({ playerIndex:seatIndex, play });
     this.trickState.leadPlay = play;
     this.trickState.passCount = 0;
+    // 记录历史出牌
+    if (this.enablePlayHistory) {
+      if (!this.playHistory[this.currentTrickIndex]) {
+        this.playHistory[this.currentTrickIndex] = { trickIndex: this.currentTrickIndex, plays: [] };
+      }
+      this.playHistory[this.currentTrickIndex].plays.push({
+        playerIndex: seatIndex,
+        play: { cards: play.cards, type: play.type },
+        timestamp: Date.now()
+      });
+    }
     // 第一局第一手出完后标记，直接关闭限制
     if (this.isFirstGame && !this.firstTrickDone) {
       this.firstTrickDone = true;
@@ -570,6 +591,17 @@ class Room {
     }
     this.trickState.plays.push({ playerIndex:seatIndex, play:null });
     this.trickState.passCount++;
+    // 记录历史出牌（Pass）
+    if (this.enablePlayHistory) {
+      if (!this.playHistory[this.currentTrickIndex]) {
+        this.playHistory[this.currentTrickIndex] = { trickIndex: this.currentTrickIndex, plays: [] };
+      }
+      this.playHistory[this.currentTrickIndex].plays.push({
+        playerIndex: seatIndex,
+        play: null,
+        timestamp: Date.now()
+      });
+    }
     const leadIdx = this._getLeadPlayerIndex();
     const activePlayers = this.hands.filter((h,i)=>h.length>0&&i!==leadIdx).length;
     if (this.trickState.passCount >= activePlayers) {
@@ -586,6 +618,8 @@ class Room {
         let cnt=0;
         while (this.hands[next].length===0&&cnt<6) { next=(next+1)%6; cnt++; }
       }
+      // 新一轮开始，轮次编号+1
+      this.currentTrickIndex++;
       this.trickState = { leadPlay:null, plays:[], currentPlayer:next, passCount:0 };
       this.broadcastState();
       return { success:true };
@@ -730,6 +764,15 @@ wss.on('connection', (ws) => {
         playerSeat = seat;
         ws.send(JSON.stringify({ type:'room_joined', code: msg.code, seat, players: room.players.map(p=>p?{name:p.name}:null) }));
         room.broadcast({ type:'player_joined', seat, name: msg.name, players: room.players.map(p=>p?{name:p.name}:null) }, ws);
+        break;
+      }
+
+      case 'toggle_play_history': {
+        // 房主切换历史记录功能
+        if (!playerRoom || playerSeat !== 0) return;
+        if (playerRoom.phase !== 'waiting') return;
+        playerRoom.enablePlayHistory = msg.enabled;
+        playerRoom.broadcastState();
         break;
       }
 

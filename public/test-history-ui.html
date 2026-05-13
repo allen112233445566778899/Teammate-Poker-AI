@@ -1,0 +1,104 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>历史记录UI测试</title>
+  <link rel="stylesheet" href="public/style.css">
+</head>
+<body>
+  <div style="padding: 20px; max-width: 600px; margin: 0 auto;">
+    <h1>历史出牌记录UI测试</h1>
+    
+    <h2>1. 等待室 - 历史记录开关</h2>
+    <div id="play-history-toggle-section">
+      <label class="play-history-toggle">
+        <input type="checkbox" id="play-history-checkbox">
+        <span>📝 开启历史出牌记录（可在游戏中查看每轮出牌）</span>
+      </label>
+    </div>
+    
+    <h2>2. 游戏界面 - 查看历史按钮</h2>
+    <div style="position: relative; background-color: var(--color-bg-card); padding: 16px; border-radius: 8px;">
+      <button class="btn btn-ghost btn-sm" id="btn-view-history">📝 查看历史</button>
+      <p style="margin-top: 40px;">这是游戏界面的模拟区域</p>
+    </div>
+    
+    <h2>3. 历史记录弹窗</h2>
+    <button class="btn btn-primary" onclick="showModal()">打开历史记录弹窗</button>
+    
+    <!-- 历史记录弹窗 -->
+    <div id="play-history-modal" class="modal hidden">
+      <div class="modal-overlay" onclick="hideModal()"></div>
+      <div class="modal-content">
+        <div class="modal-header">
+          <h3>历史出牌记录</h3>
+          <button class="modal-close" onclick="hideModal()">✕</button>
+        </div>
+        <div class="modal-body">
+          <!-- 示例历史记录 -->
+          <div class="history-trick">
+            <div class="history-trick-header">第 2 轮</div>
+            <div class="history-plays">
+              <div class="history-play-item">
+                <span class="history-player-name">玩家1</span>
+                <span class="history-time">14:30:25</span>
+                <div class="history-cards">
+                  <span class="history-card-type">对子</span>
+                  <span class="history-cards-list">♠A ♥A</span>
+                </div>
+              </div>
+              <div class="history-play-item">
+                <span class="history-player-name">玩家2</span>
+                <span class="history-time">14:30:28</span>
+                <span class="history-pass">Pass</span>
+              </div>
+            </div>
+          </div>
+          
+          <div class="history-trick">
+            <div class="history-trick-header">第 1 轮</div>
+            <div class="history-plays">
+              <div class="history-play-item">
+                <span class="history-player-name">玩家1</span>
+                <span class="history-time">14:30:15</span>
+                <div class="history-cards">
+                  <span class="history-card-type">单张</span>
+                  <span class="history-cards-list">♦3</span>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+  
+  <script>
+    function showModal() {
+      document.getElementById('play-history-modal').classList.remove('hidden');
+      document.body.style.overflow = 'hidden';
+    }
+    
+    function hideModal() {
+      document.getElementById('play-history-modal').classList.add('hidden');
+      document.body.style.overflow = '';
+    }
+    
+    // 测试开关
+    document.getElementById('play-history-checkbox').addEventListener('change', (e) => {
+      console.log('历史记录开关:', e.target.checked ? '开启' : '关闭');
+      alert('历史记录功能' + (e.target.checked ? '已开启' : '已关闭'));
+    });
+    
+    // 测试按钮
+    document.getElementById('btn-view-history').addEventListener('click', () => {
+      showModal();
+    });
+    
+    console.log('测试页面加载完成');
+    console.log('历史记录开关元素:', document.getElementById('play-history-toggle-section'));
+    console.log('查看历史按钮:', document.getElementById('btn-view-history'));
+  </script>
+</body>
+</html>

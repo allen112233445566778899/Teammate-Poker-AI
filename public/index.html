@@ -159,6 +159,13 @@
     <div class="view-body">
       <div class="waiting-players" id="waiting-players"></div>
       <p class="waiting-hint" id="waiting-hint">等待其他玩家加入... (0/6)</p>
+      <!-- 历史出牌记录开关（仅房主可见） -->
+      <div id="play-history-toggle-section" class="hidden">
+        <label class="play-history-toggle">
+          <input type="checkbox" id="play-history-checkbox">
+          <span>📝 开启历史出牌记录（可在游戏中查看每轮出牌）</span>
+        </label>
+      </div>
       <!-- AI配置面板（仅房主可见） -->
       <div id="ai-config-section" class="hidden">
         <button class="btn btn-ghost btn-sm" id="btn-toggle-ai-config" style="width:100%;margin-bottom:8px;">🤖 AI玩家设置</button>
@@ -281,6 +288,8 @@
       </div>
       <div class="play-bid-info" id="play-bid-info"></div>
       <div class="rankings-bar" id="rankings-bar"></div>
+      <!-- 查看历史按钮 -->
+      <button class="btn btn-ghost btn-sm hidden" id="btn-view-history">📝 查看历史</button>
     </div>
     <div class="play-area">
       <!-- 其他玩家状态 -->
@@ -322,6 +331,20 @@
       <button class="btn btn-danger btn-large hidden" id="btn-reset-scores">清空所有积分</button>
     </div>
   </section>
+
+  <!-- 历史出牌记录弹窗 -->
+  <div id="play-history-modal" class="modal hidden">
+    <div class="modal-overlay" id="history-modal-overlay"></div>
+    <div class="modal-content">
+      <div class="modal-header">
+        <h3>历史出牌记录</h3>
+        <button class="modal-close" id="btn-close-history">✕</button>
+      </div>
+      <div class="modal-body" id="history-modal-body">
+        <!-- 动态填充历史记录 -->
+      </div>
+    </div>
+  </div>
 
   <script>
     window.onerror = function(msg, src, line, col, err) {
