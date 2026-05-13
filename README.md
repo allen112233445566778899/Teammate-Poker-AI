@@ -208,23 +208,16 @@ DeepSeek deepseek-chat
 •   AI: OpenAI-compatible interfaces from various vendors (pure frontend calls)
 
 📁 Project Structure
-
-
-├── server.js          # Main server file (Game logic + WebSocket)
-
+```
+├── server.js          # 服务器主文件（游戏逻辑 + WebSocket）# Main server file (Game logic + WebSocket)
 ├── public/
-
-│   ├── index.html    # Page structure
-
-│   ├── client.js     # Client-side logic
-
-│   ├── style.css     # Styling
-
-│   └── ai-worker.js  # AI player adapter
-
+│   ├── index.html     # 页面结构 # Page structure
+│   ├── client.js      # 客户端逻辑 # Client-side logic
+│   ├── style.css      # 样式 # Styling
+│   └── ai-worker.js   # AI 玩家适配器  # AI player adapter
 ├── package.json
-
 └── README.md
+```
 
 
 
